@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 基础样式 */
+@layer base {
+  :root {
+    /* 狼人杀主题色 */
+    --wolf-bg: #0a0e1a;
+    --wolf-card: #1a1f2e;
+    --wolf-border: #2d3548;
+    --wolf-accent: #4a5568;
+    
+    /* 角色颜色 */
+    --role-werewolf: #dc2626;
+    --role-seer: #7c3aed;
+    --role-witch: #16a34a;
+    --role-hunter: #ea580c;
+    --role-guard: #eab308;
+    --role-villager: #6b7280;
+    
+    /* 阵营颜色 */
+    --team-good: #3b82f6;
+    --team-evil: #dc2626;
+  }
+
+  * {
+    @apply border-wolf-border;
+  }
+
+  body {
+    @apply bg-wolf-bg text-gray-100 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* 滚动条样式 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-wolf-bg rounded;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-wolf-border rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-wolf-accent;
+  }
+}
+
+/* 组件样式 */
+@layer components {
+  /* 卡片样式 */
+  .wolf-card {
+    @apply bg-wolf-card rounded-xl border border-wolf-border p-4;
+  }
+
+  /* 按钮样式 */
+  .wolf-btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+  }
+
+  .wolf-btn-primary {
+    @apply wolf-btn bg-purple-600 text-white hover:bg-purple-700;
+  }
+
+  .wolf-btn-secondary {
+    @apply wolf-btn bg-wolf-border text-gray-200 hover:bg-wolf-accent;
+  }
+
+  .wolf-btn-danger {
+    @apply wolf-btn bg-red-600 text-white hover:bg-red-700;
+  }
+
+  /* 输入框样式 */
+  .wolf-input {
+    @apply w-full px-4 py-2 bg-wolf-bg border border-wolf-border rounded-lg 
+           text-gray-200 placeholder-gray-600 
+           focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent;
+  }
+
+  /* 徽章样式 */
+  .wolf-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+}
+
+/* 工具类 */
+@layer utilities {
+  /* 文字渐变 */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+  }
+
+  /* 发光效果 */
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+  }
+
+  /* 玻璃效果 */
+  .glass {
+    @apply bg-white/5 backdrop-blur-md;
+  }
+
+  /* 动画延迟 */
+  .animation-delay-150 {
+    animation-delay: 150ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .animation-delay-450 {
+    animation-delay: 450ms;
+  }
+}
+
+/* 自定义动画 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(124, 58, 237, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.8), 0 0 40px rgba(124, 58, 237, 0.4);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 角色特定样式 */
+.role-werewolf {
+  color: var(--role-werewolf);
+}
+
+.role-seer {
+  color: var(--role-seer);
+}
+
+.role-witch {
+  color: var(--role-witch);
+}
+
+.role-hunter {
+  color: var(--role-hunter);
+}
+
+.role-guard {
+  color: var(--role-guard);
+}
+
+.role-villager {
+  color: var(--role-villager);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .wolf-card {
+    @apply p-3;
+  }
+}
