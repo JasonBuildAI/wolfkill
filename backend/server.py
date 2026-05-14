@@ -24,7 +24,40 @@ from backend.agents.werewolf_agent import WerewolfAgent
 from backend.agents.witch_agent import WitchAgent
 from backend.config import config
 from backend.database import create_game as db_create_game
-from backend.database import get_game, get_game_logs, list_games, update_game_status
+from backend.database import (
+    get_game,
+    get_game_analysis,
+    get_game_logs,
+    get_leaderboard_db,
+    get_player_stats,
+    get_role_stats,
+    list_game_analysis,
+    list_games,
+    save_game_analysis,
+    update_game_status,
+    update_leaderboard_db,
+    update_player_stats,
+)
+from backend.evaluation.leaderboard import (
+    get_agent_comparison,
+    get_leaderboard,
+    merge_leaderboard_entries,
+    update_leaderboard_entry,
+)
+from backend.evaluation.metrics import (
+    calculate_action_accuracy,
+    calculate_comprehensive_metrics,
+    calculate_role_win_rate,
+    calculate_speech_consistency,
+    calculate_survival_rate,
+    calculate_team_contribution,
+)
+from backend.evaluation.replay import (
+    analyze_attribution,
+    generate_game_summary,
+    identify_turning_points,
+    reconstruct_game_replay,
+)
 from backend.game_engine.engine import GameEngine
 from backend.game_engine.roles import ROLE_NAME_CN, Phase, Role
 
@@ -148,6 +181,165 @@ class GameManager:
 
 # 全局游戏管理器
 game_manager = GameManager()
+
+
+# ========== Evaluation Helper ==========
+
+async def _process_game_evaluation(game_id: str, engine: GameEngine) -> None:
+    """
+    游戏结束后自动处理评估流程
+    1. 计算指标
+    2. 更新玩家统计
+    3. 更新排行榜
+    4. 生成并保存游戏分析
+    """
+    try:
+        logs = await get_game_logs(game_id)
+        db_game = await get_game(game_id)
+
+        if not db_game:
+            logger.warning(f"游戏 {game_id} 未找到，跳过评估")
+            return
+
+        players_config = json.loads(db_game.get("players_config", "[]"))
+        winner = engine.state.winner or db_game.get("winner", "")
+        round_count = engine.state.round_number
+
+        # 构建游戏结果字典
+        game_result = {
+            "game_id": game_id,
+            "winner": winner,
+            "round_count": round_count,
+            "players": [],
+            "logs": logs,
+        }
+
+        for player in engine.state.players:
+            game_result["players"].append({
+                "id": player.id,
+                "name": player.name,
+                "role": player.role.value,
+                "is_alive": player.is_alive,
+                "team": player.team.value,
+            })
+
+        # 1. 计算综合指标
+        comprehensive = calculate_comprehensive_metrics(game_result, logs, players_config)
+        player_metrics = comprehensive.get("player_metrics", {})
+
+        # 2. 计算各项具体指标
+        action_accuracy = calculate_action_accuracy(logs, players_config)
+        speech_consistency = calculate_speech_consistency(logs)
+        contribution_scores = calculate_team_contribution(game_result)
+
+        # 3. 更新每个玩家的统计和排行榜
+        for player in engine.state.players:
+            player_id = player.id
+            role = player.role
+            role_str = role.value
+            team = player.team.value
+            is_winner = team == winner
+            survived = player.is_alive
+            player_name = player.name
+
+            # 获取该玩家的指标
+            p_metrics = player_metrics.get(player_id, {})
+            p_action = action_accuracy.get(player_id, {})
+            p_speech = speech_consistency.get(player_id, 0.5)
+            p_contribution = contribution_scores.get(player_id, 0.5)
+
+            vote_acc = p_action.get("vote_accuracy", 0.0)
+            action_acc = (
+                p_action.get("check_accuracy", 0.0) or
+                p_action.get("protect_accuracy", 0.0) or
+                p_action.get("kill_accuracy", 0.0) or
+                vote_acc
+            )
+
+            # 更新玩家统计
+            await update_player_stats(
+                player_id=player_id,
+                role=role_str,
+                game_won=is_winner,
+                survived=survived,
+                contribution=p_contribution,
+                vote_accuracy=vote_acc,
+                action_accuracy=action_acc,
+                speech_consistency=p_speech,
+                player_name=player_name,
+            )
+
+            # 更新排行榜
+            lb_entry = update_leaderboard_entry(
+                player_id=player_id,
+                role=role,
+                game_result=game_result,
+                metrics={
+                    "contribution_score": p_contribution,
+                    "vote_accuracy": vote_acc,
+                    "survived": survived,
+                },
+                player_name=player_name,
+            )
+
+            # 获取现有排行榜记录并合并
+            existing_lb = await get_leaderboard_db(role=role_str, limit=1, min_games=0)
+            existing = None
+            for e in existing_lb:
+                if e.get("player_id") == player_id:
+                    existing = e
+                    break
+
+            if existing:
+                merged = merge_leaderboard_entries(existing, lb_entry)
+                await update_leaderboard_db(
+                    player_id=player_id,
+                    role=role_str,
+                    player_name=player_name,
+                    win_rate=merged["win_rate"],
+                    survival_rate=merged["survival_rate"],
+                    avg_contribution=merged["avg_contribution"],
+                    avg_vote_accuracy=merged["avg_vote_accuracy"],
+                    avg_action_accuracy=merged["avg_action_accuracy"],
+                    games_count=merged["games_count"],
+                    wins=merged["wins"],
+                    total_score=merged["total_score"],
+                )
+            else:
+                await update_leaderboard_db(
+                    player_id=player_id,
+                    role=role_str,
+                    player_name=player_name,
+                    win_rate=lb_entry["win_rate"],
+                    survival_rate=lb_entry["survival_rate"],
+                    avg_contribution=lb_entry["avg_contribution"],
+                    avg_vote_accuracy=lb_entry["avg_vote_accuracy"],
+                    avg_action_accuracy=lb_entry["avg_action_accuracy"],
+                    games_count=lb_entry["games_count"],
+                    wins=lb_entry["wins"],
+                    total_score=lb_entry["total_score"],
+                )
+
+        # 4. 生成并保存游戏分析
+        turning_points = identify_turning_points(logs)
+        attribution = analyze_attribution(game_result, logs)
+        summary = generate_game_summary(game_id, game_result, logs)
+
+        await save_game_analysis(
+            game_id=game_id,
+            winner=winner,
+            round_count=round_count,
+            turning_points=turning_points,
+            attribution=attribution,
+            summary=attribution.get("analysis_summary", ""),
+            player_metrics=player_metrics,
+            team_metrics=comprehensive.get("team_metrics", {}),
+        )
+
+        logger.info(f"游戏 {game_id} 评估完成")
+
+    except Exception as e:
+        logger.exception(f"游戏评估失败: {e}")
 
 
 # ========== REST Endpoints ==========
@@ -351,6 +543,10 @@ async def start_game(game_id: str, auto_play: bool = True, speed: float = 0.5):
                         "state": engine.state.to_dict(),
                     },
                 })
+
+                # 自动执行评估流程
+                await _process_game_evaluation(game_id, engine)
+
                 await asyncio.sleep(5)
                 await game_manager.cleanup_game(game_id)
             except asyncio.CancelledError:
@@ -380,6 +576,10 @@ async def start_game(game_id: str, auto_play: bool = True, speed: float = 0.5):
                         "state": engine.state.to_dict(),
                     },
                 })
+
+                # 自动执行评估流程
+                await _process_game_evaluation(game_id, engine)
+
                 await asyncio.sleep(15)
                 await game_manager.cleanup_game(game_id)
             except asyncio.CancelledError:
@@ -431,6 +631,237 @@ async def submit_action(game_id: str, action: HumanAction):
         raise HTTPException(status_code=400, detail="操作提交失败")
 
     return {"message": "操作已提交", "player_id": action.player_id}
+
+
+# ========== Evaluation Endpoints ==========
+
+@app.get("/api/evaluation/games/{game_id}/replay")
+async def get_game_replay(game_id: str):
+    """获取游戏回放与分析"""
+    db_game = await get_game(game_id)
+    if not db_game:
+        raise HTTPException(status_code=404, detail="游戏不存在")
+
+    logs = await get_game_logs(game_id)
+    replay = reconstruct_game_replay(game_id, logs)
+
+    return {
+        "game_id": game_id,
+        "status": db_game.get("status"),
+        "winner": db_game.get("winner"),
+        "replay": replay,
+    }
+
+
+@app.get("/api/evaluation/games/{game_id}/attribution")
+async def get_game_attribution(game_id: str):
+    """获取归因分析"""
+    # 先尝试从数据库获取已保存的分析
+    analysis = await get_game_analysis(game_id)
+    if analysis and analysis.get("attribution"):
+        return {
+            "game_id": game_id,
+            "attribution": analysis["attribution"],
+        }
+
+    # 实时计算
+    db_game = await get_game(game_id)
+    if not db_game:
+        raise HTTPException(status_code=404, detail="游戏不存在")
+
+    logs = await get_game_logs(game_id)
+    players_config = json.loads(db_game.get("players_config", "[]"))
+
+    game_result = {
+        "game_id": game_id,
+        "winner": db_game.get("winner", ""),
+        "round_count": db_game.get("round_number", 0),
+        "players": players_config,
+        "logs": logs,
+    }
+
+    attribution = analyze_attribution(game_result, logs)
+    return {
+        "game_id": game_id,
+        "attribution": attribution,
+    }
+
+
+@app.get("/api/evaluation/games/{game_id}/summary")
+async def get_game_summary_endpoint(game_id: str):
+    """获取游戏总结"""
+    # 先尝试从数据库获取
+    analysis = await get_game_analysis(game_id)
+    if analysis:
+        return {
+            "game_id": game_id,
+            "summary": analysis,
+        }
+
+    # 实时生成
+    db_game = await get_game(game_id)
+    if not db_game:
+        raise HTTPException(status_code=404, detail="游戏不存在")
+
+    logs = await get_game_logs(game_id)
+    players_config = json.loads(db_game.get("players_config", "[]"))
+
+    game_result = {
+        "game_id": game_id,
+        "winner": db_game.get("winner", ""),
+        "round_count": db_game.get("round_number", 0),
+        "players": players_config,
+        "logs": logs,
+    }
+
+    summary = generate_game_summary(game_id, game_result, logs)
+    return {
+        "game_id": game_id,
+        "summary": summary,
+    }
+
+
+# ========== Leaderboard Endpoints ==========
+
+@app.get("/api/leaderboard")
+async def get_overall_leaderboard(
+    role: Optional[str] = None,
+    metric: str = "total_score",
+    limit: int = 50,
+    min_games: int = 1,
+):
+    """获取总排行榜"""
+    entries = await get_leaderboard_db(
+        role=role,
+        metric=metric,
+        limit=limit,
+        min_games=min_games,
+    )
+    return {
+        "leaderboard": entries,
+        "count": len(entries),
+        "role": role,
+        "metric": metric,
+    }
+
+
+@app.get("/api/leaderboard/role/{role}")
+async def get_role_leaderboard_endpoint(
+    role: str,
+    metric: str = "total_score",
+    limit: int = 20,
+    min_games: int = 1,
+):
+    """获取角色特定排行榜"""
+    try:
+        role_enum = Role(role)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"无效角色: {role}")
+
+    entries = await get_leaderboard_db(
+        role=role,
+        metric=metric,
+        limit=limit,
+        min_games=min_games,
+    )
+    return {
+        "role": role,
+        "role_name": ROLE_NAME_CN.get(role_enum, ""),
+        "leaderboard": entries,
+        "count": len(entries),
+        "metric": metric,
+    }
+
+
+@app.get("/api/leaderboard/agents/compare")
+async def compare_agents(agent_ids: str):
+    """比较多个agent的表现"""
+    if not agent_ids:
+        raise HTTPException(status_code=400, detail="请提供agent_ids参数")
+
+    ids = [a.strip() for a in agent_ids.split(",") if a.strip()]
+    if len(ids) < 2:
+        raise HTTPException(status_code=400, detail="至少需要2个agent进行比较")
+
+    # 获取所有相关排行榜数据
+    all_entries = []
+    for agent_id in ids:
+        entries = await get_leaderboard_by_player(agent_id)
+        all_entries.extend(entries)
+
+    comparison = get_agent_comparison(all_entries, ids)
+    return comparison
+
+
+# ========== Stats Endpoints ==========
+
+@app.get("/api/stats/players/{player_id}")
+async def get_player_statistics(player_id: str):
+    """获取玩家统计"""
+    stats = await get_player_stats(player_id=player_id)
+    if not stats:
+        raise HTTPException(status_code=404, detail="未找到该玩家的统计数据")
+
+    # 计算总体统计
+    total_games = sum(s.get("games_played", 0) for s in stats)
+    total_wins = sum(s.get("games_won", 0) for s in stats)
+    total_survival = sum(s.get("survival_count", 0) for s in stats)
+
+    return {
+        "player_id": player_id,
+        "total_games": total_games,
+        "total_wins": total_wins,
+        "overall_win_rate": round(total_wins / total_games, 4) if total_games > 0 else 0.0,
+        "overall_survival_rate": round(total_survival / total_games, 4) if total_games > 0 else 0.0,
+        "role_stats": stats,
+    }
+
+
+@app.get("/api/stats/roles")
+async def get_role_statistics():
+    """获取角色统计"""
+    stats = await get_role_stats()
+    return {
+        "roles": stats,
+        "count": len(stats),
+    }
+
+
+@app.get("/api/stats/overview")
+async def get_statistics_overview():
+    """获取统计概览"""
+    games = await list_games(limit=1000)
+    finished_games = [g for g in games if g.get("status") == "finished"]
+
+    # 角色胜率统计
+    game_results = []
+    for game in finished_games:
+        try:
+            players_config = json.loads(game.get("players_config", "[]"))
+            game_results.append({
+                "winner": game.get("winner", ""),
+                "players": players_config,
+                "round_count": game.get("round_number", 0),
+            })
+        except json.JSONDecodeError:
+            continue
+
+    role_win_rates = calculate_role_win_rate(game_results)
+
+    # 好人/狼人总体胜率
+    good_wins = sum(1 for g in game_results if g.get("winner") == "good")
+    evil_wins = sum(1 for g in game_results if g.get("winner") == "evil")
+    total_finished = len(game_results)
+
+    return {
+        "total_games": len(games),
+        "finished_games": total_finished,
+        "good_wins": good_wins,
+        "evil_wins": evil_wins,
+        "good_win_rate": round(good_wins / total_finished, 4) if total_finished > 0 else 0.0,
+        "evil_win_rate": round(evil_wins / total_finished, 4) if total_finished > 0 else 0.0,
+        "role_win_rates": role_win_rates,
+    }
 
 
 # ========== WebSocket ==========

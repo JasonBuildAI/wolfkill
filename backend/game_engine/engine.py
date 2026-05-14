@@ -838,6 +838,8 @@ class GameEngine:
                     round_number=self.state.round_number,
                     game_state=json.dumps(self.state.to_dict(), ensure_ascii=False),
                 )
+                # 触发游戏结束评估回调
+                await self._emit_game_over()
             except Exception as e:
                 logger.warning(f"更新游戏状态到数据库失败: {e}")
             return
@@ -857,12 +859,23 @@ class GameEngine:
                     round_number=self.state.round_number,
                     game_state=json.dumps(self.state.to_dict(), ensure_ascii=False),
                 )
+                # 触发游戏结束评估回调
+                await self._emit_game_over()
             except Exception as e:
                 logger.warning(f"更新游戏状态到数据库失败: {e}")
             return
 
         # 游戏继续
         await self._emit_log("round_end", f"第 {self.state.round_number} 轮结束，游戏继续")
+
+    async def _emit_game_over(self) -> None:
+        """触发游戏结束回调，用于评估系统"""
+        cb = self.callbacks.get("on_game_over")
+        if cb:
+            try:
+                await cb(self.state)
+            except Exception as e:
+                logger.warning(f"游戏结束回调执行失败: {e}")
 
     async def _handle_hunter_shot(self, hunter: Player, cause: str) -> None:
         """处理猎人开枪"""
