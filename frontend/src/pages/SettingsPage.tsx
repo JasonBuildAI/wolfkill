@@ -42,10 +42,19 @@ export function SettingsPage() {
   const fetchProviders = async () => {
     try {
       const res = await fetch(`${API_URL}/api/providers`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
-      setProviders(data.providers || []);
+      const providerList = data.providers || [];
+      setProviders(providerList);
+      // 如果获取到数据但当前provider不在列表中，默认选第一个
+      if (providerList.length > 0 && !providerList.find((p: Provider) => p.id === config.provider)) {
+        setConfig(prev => ({ ...prev, provider: providerList[0].id }));
+      }
     } catch (err) {
       console.error('获取服务商列表失败:', err);
+      setMessage({ type: 'error', text: '无法连接到后端服务，请确保后端已启动 (python -m uvicorn backend.server:app --host 0.0.0.0 --port 8000)' });
     }
   };
 
@@ -298,21 +307,27 @@ export function SettingsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Max Tokens: {config.max_tokens}
+                  Max Tokens: {config.max_tokens >= 10000 ? `${(config.max_tokens / 10000).toFixed(0)}万` : config.max_tokens}
                 </label>
                 <input
                   type="range"
                   min="100"
-                  max="2000"
+                  max="2000000"
                   step="100"
-                  value={config.max_tokens}
-                  onChange={(e) => setConfig(prev => ({ ...prev, max_tokens: parseInt(e.target.value) }))}
+                  value={config.max_tokens <= 10000 ? config.max_tokens : Math.log10(config.max_tokens) * 2500}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    // 使用对数刻度让大范围调节更平滑
+                    const tokens = val <= 10000 ? val : Math.round(Math.pow(10, val / 2500));
+                    setConfig(prev => ({ ...prev, max_tokens: Math.min(tokens, 2000000) }));
+                  }}
                   className="w-full accent-purple-500"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>100</span>
-                  <span>1000</span>
-                  <span>2000</span>
+                  <span>1万</span>
+                  <span>100万</span>
+                  <span>200万</span>
                 </div>
               </div>
             </div>

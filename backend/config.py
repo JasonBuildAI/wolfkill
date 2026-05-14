@@ -130,7 +130,7 @@ class ModelConfig:
     api_key: str = ""
     base_url: str = ""
     temperature: float = 0.7
-    max_tokens: int = 500
+    max_tokens: int = 500  # 支持范围: 1 - 2,000,000
 
 
 class Config:

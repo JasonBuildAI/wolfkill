@@ -872,7 +872,7 @@ class ModelConfigRequest(BaseModel):
     api_key: str = ""
     base_url: str = ""
     temperature: float = 0.7
-    max_tokens: int = 500
+    max_tokens: int = Field(default=500, ge=1, le=2000000)
 
 
 @app.get("/api/providers")
