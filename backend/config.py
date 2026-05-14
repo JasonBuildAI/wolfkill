@@ -1,5 +1,6 @@
 """
 配置文件 - 支持多模型服务商动态切换
+模型列表基于2025-2026年最新信息更新
 """
 import os
 from dataclasses import dataclass, field
@@ -9,16 +10,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# 预定义的模型服务商配置
+# 预定义的模型服务商配置 - 2026年5月最新
 PROVIDER_CONFIGS = {
     "openai": {
         "name": "OpenAI",
         "base_url": "https://api.openai.com/v1",
         "models": [
+            {"id": "gpt-5.5", "name": "GPT-5.5"},
+            {"id": "gpt-5.5-pro", "name": "GPT-5.5 Pro"},
+            {"id": "gpt-5.4", "name": "GPT-5.4"},
+            {"id": "gpt-5.4-pro", "name": "GPT-5.4 Pro"},
+            {"id": "gpt-4.1", "name": "GPT-4.1 (1M上下文)"},
+            {"id": "gpt-4.1-mini", "name": "GPT-4.1 Mini"},
             {"id": "gpt-4o", "name": "GPT-4o"},
             {"id": "gpt-4o-mini", "name": "GPT-4o Mini"},
-            {"id": "gpt-4-turbo", "name": "GPT-4 Turbo"},
-            {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo"},
+            {"id": "o3", "name": "o3 (推理模型)"},
+            {"id": "o3-pro", "name": "o3 Pro (推理模型)"},
+            {"id": "o4-mini", "name": "o4 Mini (推理模型)"},
+            {"id": "o4-mini-high", "name": "o4 Mini High (推理模型)"},
         ],
         "key_url": "https://platform.openai.com/api-keys",
     },
@@ -26,9 +35,11 @@ PROVIDER_CONFIGS = {
         "name": "Azure OpenAI",
         "base_url": "",
         "models": [
-            {"id": "gpt-4", "name": "GPT-4"},
+            {"id": "gpt-5.5", "name": "GPT-5.5"},
+            {"id": "gpt-4.1", "name": "GPT-4.1"},
             {"id": "gpt-4o", "name": "GPT-4o"},
-            {"id": "gpt-35-turbo", "name": "GPT-3.5 Turbo"},
+            {"id": "gpt-4o-mini", "name": "GPT-4o Mini"},
+            {"id": "o3", "name": "o3"},
         ],
         "key_url": "https://portal.azure.com",
     },
@@ -36,9 +47,10 @@ PROVIDER_CONFIGS = {
         "name": "Anthropic",
         "base_url": "https://api.anthropic.com/v1",
         "models": [
+            {"id": "claude-opus-4-6", "name": "Claude Opus 4.6"},
+            {"id": "claude-sonnet-4-5", "name": "Claude Sonnet 4.5"},
             {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet"},
             {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus"},
-            {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet"},
             {"id": "claude-3-haiku-20240307", "name": "Claude 3 Haiku"},
         ],
         "key_url": "https://console.anthropic.com/settings/keys",
@@ -47,8 +59,10 @@ PROVIDER_CONFIGS = {
         "name": "DeepSeek",
         "base_url": "https://api.deepseek.com/v1",
         "models": [
-            {"id": "deepseek-chat", "name": "DeepSeek-V3"},
-            {"id": "deepseek-reasoner", "name": "DeepSeek-R1"},
+            {"id": "deepseek-v4-pro", "name": "DeepSeek-V4-Pro (1.6T/49B, 1M上下文)"},
+            {"id": "deepseek-v4-flash", "name": "DeepSeek-V4-Flash (284B/13B, 1M上下文)"},
+            {"id": "deepseek-chat", "name": "DeepSeek-V3.2 (兼容旧版)"},
+            {"id": "deepseek-reasoner", "name": "DeepSeek-R1 (兼容旧版)"},
         ],
         "key_url": "https://platform.deepseek.com/api_keys",
     },
@@ -56,13 +70,20 @@ PROVIDER_CONFIGS = {
         "name": "OpenRouter",
         "base_url": "https://openrouter.ai/api/v1",
         "models": [
-            {"id": "openai/gpt-4o", "name": "GPT-4o (via OpenRouter)"},
-            {"id": "anthropic/claude-3.5-sonnet", "name": "Claude 3.5 Sonnet (via OpenRouter)"},
-            {"id": "google/gemini-2.0-flash-001", "name": "Gemini 2.0 Flash"},
-            {"id": "meta-llama/llama-3.3-70b-instruct", "name": "Llama 3.3 70B"},
-            {"id": "deepseek/deepseek-chat", "name": "DeepSeek-V3"},
-            {"id": "qwen/qwen-2.5-72b-instruct", "name": "Qwen 2.5 72B"},
-            {"id": "01-ai/yi-34b-chat", "name": "Yi-34B"},
+            {"id": "openai/gpt-5.5", "name": "GPT-5.5 (via OpenRouter)"},
+            {"id": "openai/gpt-5.5-pro", "name": "GPT-5.5 Pro (via OpenRouter)"},
+            {"id": "openai/gpt-4.1", "name": "GPT-4.1 (via OpenRouter)"},
+            {"id": "anthropic/claude-opus-4-6", "name": "Claude Opus 4.6 (via OpenRouter)"},
+            {"id": "anthropic/claude-sonnet-4-5", "name": "Claude Sonnet 4.5 (via OpenRouter)"},
+            {"id": "deepseek/deepseek-v4-pro", "name": "DeepSeek-V4-Pro (via OpenRouter)"},
+            {"id": "deepseek/deepseek-v4-flash", "name": "DeepSeek-V4-Flash (via OpenRouter)"},
+            {"id": "google/gemini-2.5-pro", "name": "Gemini 2.5 Pro (via OpenRouter)"},
+            {"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash (via OpenRouter)"},
+            {"id": "x-ai/grok-4", "name": "Grok 4 (via OpenRouter)"},
+            {"id": "meta-llama/llama-4-maverick", "name": "Llama 4 Maverick (via OpenRouter)"},
+            {"id": "qwen/qwen3-235b-a22b", "name": "Qwen3-235B (via OpenRouter)"},
+            {"id": "openrouter/owl-alpha", "name": "Owl Alpha (via OpenRouter)"},
+            {"id": "openrouter/hunter-alpha", "name": "Hunter Alpha 1T/1M (via OpenRouter)"},
         ],
         "key_url": "https://openrouter.ai/keys",
     },
@@ -70,13 +91,16 @@ PROVIDER_CONFIGS = {
         "name": "硅基流动 (SiliconFlow)",
         "base_url": "https://api.siliconflow.cn/v1",
         "models": [
-            {"id": "deepseek-ai/DeepSeek-V3", "name": "DeepSeek-V3"},
-            {"id": "deepseek-ai/DeepSeek-R1", "name": "DeepSeek-R1"},
-            {"id": "Qwen/Qwen2.5-72B-Instruct", "name": "Qwen2.5-72B"},
-            {"id": "Qwen/Qwen2.5-32B-Instruct", "name": "Qwen2.5-32B"},
-            {"id": "meta-llama/Llama-3.3-70B-Instruct", "name": "Llama-3.3-70B"},
-            {"id": "THUDM/glm-4-9b-chat", "name": "GLM-4-9B"},
-            {"id": "Pro/Qwen/Qwen2.5-7B-Instruct", "name": "Qwen2.5-7B (免费)"},
+            {"id": "deepseek-ai/DeepSeek-V4-Pro", "name": "DeepSeek-V4-Pro"},
+            {"id": "deepseek-ai/DeepSeek-V4-Flash", "name": "DeepSeek-V4-Flash"},
+            {"id": "zhipuai/glm-4.5", "name": "GLM-4.5"},
+            {"id": "zhipuai/glm-4.5-air", "name": "GLM-4.5-Air"},
+            {"id": "zhipuai/glm-5", "name": "GLM-5"},
+            {"id": "zhipuai/glm-5-turbo", "name": "GLM-5-Turbo"},
+            {"id": "Qwen/Qwen3-235B-A22B", "name": "Qwen3-235B"},
+            {"id": "Qwen/Qwen3-Coder-480B-A35B", "name": "Qwen3-Coder-480B"},
+            {"id": "meta-llama/Llama-4-Maverick", "name": "Llama 4 Maverick"},
+            {"id": "Pro/Qwen/Qwen3-8B", "name": "Qwen3-8B (免费)"},
         ],
         "key_url": "https://cloud.siliconflow.cn/account/ak",
     },
@@ -84,10 +108,16 @@ PROVIDER_CONFIGS = {
         "name": "智谱AI",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
         "models": [
+            {"id": "glm-5", "name": "GLM-5 (最新旗舰, 200K上下文)"},
+            {"id": "glm-5-turbo", "name": "GLM-5-Turbo"},
+            {"id": "glm-5.1", "name": "GLM-5.1 (长程任务, 8小时)"},
+            {"id": "glm-4.7", "name": "GLM-4.7"},
+            {"id": "glm-4.6", "name": "GLM-4.6 (高智能旗舰, 200K)"},
+            {"id": "glm-4.5", "name": "GLM-4.5 (355B MoE, 128K)"},
+            {"id": "glm-4.5-air", "name": "GLM-4.5-Air (高性价比)"},
             {"id": "glm-4-plus", "name": "GLM-4-Plus"},
-            {"id": "glm-4", "name": "GLM-4"},
-            {"id": "glm-4-air", "name": "GLM-4-Air"},
-            {"id": "glm-4-flash", "name": "GLM-4-Flash (免费)"},
+            {"id": "glm-4.5-flash", "name": "GLM-4.5-Flash (免费)"},
+            {"id": "glm-4.7-flash", "name": "GLM-4.7-Flash (免费)"},
         ],
         "key_url": "https://open.bigmodel.cn/usercenter/apikeys",
     },
@@ -95,6 +125,7 @@ PROVIDER_CONFIGS = {
         "name": "Moonshot (月之暗面)",
         "base_url": "https://api.moonshot.cn/v1",
         "models": [
+            {"id": "kimi-k2", "name": "Kimi K2 (MoE, 免费)"},
             {"id": "moonshot-v1-8k", "name": "Moonshot-v1-8k"},
             {"id": "moonshot-v1-32k", "name": "Moonshot-v1-32k"},
             {"id": "moonshot-v1-128k", "name": "Moonshot-v1-128k"},
@@ -108,8 +139,9 @@ PROVIDER_CONFIGS = {
             {"id": "qwen-max", "name": "Qwen-Max"},
             {"id": "qwen-plus", "name": "Qwen-Plus"},
             {"id": "qwen-turbo", "name": "Qwen-Turbo"},
-            {"id": "deepseek-v3", "name": "DeepSeek-V3"},
-            {"id": "deepseek-r1", "name": "DeepSeek-R1"},
+            {"id": "qwen3-235b-a22b", "name": "Qwen3-235B"},
+            {"id": "deepseek-v4-pro", "name": "DeepSeek-V4-Pro"},
+            {"id": "deepseek-v4-flash", "name": "DeepSeek-V4-Flash"},
         ],
         "key_url": "https://dashscope.console.aliyun.com/apiKey",
     },
@@ -130,7 +162,7 @@ class ModelConfig:
     api_key: str = ""
     base_url: str = ""
     temperature: float = 0.7
-    max_tokens: int = 500  # 支持范围: 1 - 2,000,000
+    max_tokens: int = 500
 
 
 class Config:
