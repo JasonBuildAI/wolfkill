@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import type { GameAction } from '@/types/game';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
 const RECONNECT_DELAY = 3000;
 const MAX_RECONNECT_ATTEMPTS = 5;
 

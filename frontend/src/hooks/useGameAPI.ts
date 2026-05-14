@@ -16,7 +16,7 @@ import type {
   Role,
 } from '@/types/game';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 interface UseAPIState<T> {
   data: T | null;

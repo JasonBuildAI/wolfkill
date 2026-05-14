@@ -28,7 +28,7 @@ interface GameStore {
   setError: (error: string | null) => void;
 }
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
 
 export const useGameStore = create<GameStore>((set, get) => ({
   // 初始状态
