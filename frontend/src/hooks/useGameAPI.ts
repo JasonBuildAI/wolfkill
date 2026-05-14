@@ -6,6 +6,14 @@ import type {
   GameListItem,
   GameState,
   GameAction,
+  LeaderboardEntry,
+  RoleStats,
+  GameReplay,
+  AttributionResult,
+  GameSummary,
+  PlayerStats,
+  StatsOverview,
+  Role,
 } from '@/types/game';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -267,6 +275,233 @@ export function useGetGameLogs() {
   return { ...state, getLogs };
 }
 
+// 获取排行榜
+export function useGetLeaderboard() {
+  const [state, setState] = useState<UseAPIState<LeaderboardEntry[]>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  const getLeaderboard = useCallback(async (role?: Role) => {
+    setState({ data: null, loading: true, error: null });
+
+    try {
+      const url = role
+        ? `${API_URL}/api/leaderboard?role=${role}`
+        : `${API_URL}/api/leaderboard`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '获取排行榜失败');
+      }
+
+      const data = await response.json();
+      setState({ data, loading: false, error: null });
+      return data;
+    } catch (err) {
+      const error = err instanceof Error ? err.message : '未知错误';
+      setState({ data: null, loading: false, error });
+      throw err;
+    }
+  }, []);
+
+  return { ...state, getLeaderboard };
+}
+
+// 获取角色统计
+export function useGetRoleStats() {
+  const [state, setState] = useState<UseAPIState<RoleStats[]>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  const getRoleStats = useCallback(async () => {
+    setState({ data: null, loading: true, error: null });
+
+    try {
+      const response = await fetch(`${API_URL}/api/stats/roles`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '获取角色统计失败');
+      }
+
+      const data = await response.json();
+      setState({ data, loading: false, error: null });
+      return data;
+    } catch (err) {
+      const error = err instanceof Error ? err.message : '未知错误';
+      setState({ data: null, loading: false, error });
+      throw err;
+    }
+  }, []);
+
+  return { ...state, getRoleStats };
+}
+
+// 获取游戏回放
+export function useGetGameReplay() {
+  const [state, setState] = useState<UseAPIState<GameReplay>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  const getGameReplay = useCallback(async (gameId: string) => {
+    setState({ data: null, loading: true, error: null });
+
+    try {
+      const response = await fetch(`${API_URL}/api/games/${gameId}/replay`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '获取游戏回放失败');
+      }
+
+      const data = await response.json();
+      setState({ data, loading: false, error: null });
+      return data;
+    } catch (err) {
+      const error = err instanceof Error ? err.message : '未知错误';
+      setState({ data: null, loading: false, error });
+      throw err;
+    }
+  }, []);
+
+  return { ...state, getGameReplay };
+}
+
+// 获取游戏归因分析
+export function useGetGameAttribution() {
+  const [state, setState] = useState<UseAPIState<AttributionResult>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  const getGameAttribution = useCallback(async (gameId: string) => {
+    setState({ data: null, loading: true, error: null });
+
+    try {
+      const response = await fetch(`${API_URL}/api/games/${gameId}/attribution`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '获取归因分析失败');
+      }
+
+      const data = await response.json();
+      setState({ data, loading: false, error: null });
+      return data;
+    } catch (err) {
+      const error = err instanceof Error ? err.message : '未知错误';
+      setState({ data: null, loading: false, error });
+      throw err;
+    }
+  }, []);
+
+  return { ...state, getGameAttribution };
+}
+
+// 获取游戏摘要
+export function useGetGameSummary() {
+  const [state, setState] = useState<UseAPIState<GameSummary>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  const getGameSummary = useCallback(async (gameId: string) => {
+    setState({ data: null, loading: true, error: null });
+
+    try {
+      const response = await fetch(`${API_URL}/api/games/${gameId}/summary`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '获取游戏摘要失败');
+      }
+
+      const data = await response.json();
+      setState({ data, loading: false, error: null });
+      return data;
+    } catch (err) {
+      const error = err instanceof Error ? err.message : '未知错误';
+      setState({ data: null, loading: false, error });
+      throw err;
+    }
+  }, []);
+
+  return { ...state, getGameSummary };
+}
+
+// 获取玩家统计
+export function useGetPlayerStats() {
+  const [state, setState] = useState<UseAPIState<PlayerStats>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  const getPlayerStats = useCallback(async (playerId: string) => {
+    setState({ data: null, loading: true, error: null });
+
+    try {
+      const response = await fetch(`${API_URL}/api/players/${playerId}/stats`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '获取玩家统计失败');
+      }
+
+      const data = await response.json();
+      setState({ data, loading: false, error: null });
+      return data;
+    } catch (err) {
+      const error = err instanceof Error ? err.message : '未知错误';
+      setState({ data: null, loading: false, error });
+      throw err;
+    }
+  }, []);
+
+  return { ...state, getPlayerStats };
+}
+
+// 获取统计概览
+export function useGetStatsOverview() {
+  const [state, setState] = useState<UseAPIState<StatsOverview>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
+
+  const getStatsOverview = useCallback(async () => {
+    setState({ data: null, loading: true, error: null });
+
+    try {
+      const response = await fetch(`${API_URL}/api/stats/overview`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '获取统计概览失败');
+      }
+
+      const data = await response.json();
+      setState({ data, loading: false, error: null });
+      return data;
+    } catch (err) {
+      const error = err instanceof Error ? err.message : '未知错误';
+      setState({ data: null, loading: false, error });
+      throw err;
+    }
+  }, []);
+
+  return { ...state, getStatsOverview };
+}
+
 // 综合游戏API Hook
 export function useGameAPI() {
   const createGameAPI = useCreateGame();
@@ -285,9 +520,9 @@ export function useGameAPI() {
     startGame: startGameAPI.startGame,
     submitAction: submitActionAPI.submitAction,
     getLogs: getLogsAPI.getLogs,
-    
+
     // 状态汇总
-    loading: 
+    loading:
       createGameAPI.loading ||
       listGamesAPI.loading ||
       getGameAPI.loading ||
@@ -295,8 +530,8 @@ export function useGameAPI() {
       startGameAPI.loading ||
       submitActionAPI.loading ||
       getLogsAPI.loading,
-    
-    error: 
+
+    error:
       createGameAPI.error ||
       listGamesAPI.error ||
       getGameAPI.error ||

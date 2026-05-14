@@ -223,6 +223,194 @@ export const ROLE_INFO: Record<Role, RoleConfig> = {
   },
 };
 
+// ==================== 评估与统计类型 ====================
+
+// 排行榜条目
+export interface LeaderboardEntry {
+  rank: number;
+  player_id: string;
+  player_name: string;
+  role: Role;
+  win_rate: number;
+  survival_rate: number;
+  games_played: number;
+  wins: number;
+  avg_contribution: number;
+  total_score: number;
+}
+
+// 玩家统计
+export interface PlayerStats {
+  player_id: string;
+  player_name: string;
+  total_games: number;
+  wins: number;
+  win_rate: number;
+  survival_rate: number;
+  avg_contribution: number;
+  role_stats: RolePerformance[];
+  recent_games: RecentGameResult[];
+  strengths: string[];
+  weaknesses: string[];
+  comparison: PlayerComparison;
+}
+
+// 角色表现
+export interface RolePerformance {
+  role: Role;
+  games: number;
+  wins: number;
+  win_rate: number;
+  avg_contribution: number;
+}
+
+// 最近游戏结果
+export interface RecentGameResult {
+  game_id: string;
+  role: Role;
+  result: 'win' | 'loss';
+  survived: boolean;
+  contribution: number;
+  date: string;
+}
+
+// 玩家对比
+export interface PlayerComparison {
+  win_rate_diff: number;
+  survival_rate_diff: number;
+  contribution_diff: number;
+  games_played_diff: number;
+}
+
+// 游戏回放
+export interface GameReplay {
+  game_id: string;
+  winner: Team;
+  rounds: number;
+  events: ReplayEvent[];
+  players: ReplayPlayer[];
+  key_turning_points: TurningPoint[];
+  summary: GameSummary;
+}
+
+// 回放事件
+export interface ReplayEvent {
+  id: number;
+  round: number;
+  phase: Phase;
+  type: 'kill' | 'guard' | 'check' | 'witch_action' | 'vote' | 'death' | 'speech' | 'game_end' | 'hunter_shoot';
+  timestamp: string;
+  description: string;
+  player_id?: string;
+  player_name?: string;
+  target_id?: string;
+  target_name?: string;
+  result?: string;
+  details?: Record<string, unknown>;
+}
+
+// 回放玩家
+export interface ReplayPlayer {
+  player_id: string;
+  player_name: string;
+  role: Role;
+  team: Team;
+  died_round?: number;
+  died_phase?: Phase;
+  cause_of_death?: string;
+  survived: boolean;
+}
+
+// 转折点
+export interface TurningPoint {
+  round: number;
+  phase: Phase;
+  description: string;
+  impact: 'high' | 'medium' | 'low';
+  involved_players: string[];
+}
+
+// 归因结果
+export interface AttributionResult {
+  game_id: string;
+  player_attributions: PlayerAttribution[];
+  role_attributions: RoleAttribution[];
+  key_decisions: KeyDecision[];
+}
+
+// 玩家归因
+export interface PlayerAttribution {
+  player_id: string;
+  player_name: string;
+  role: Role;
+  contribution_score: number;
+  impact_description: string;
+  key_actions: string[];
+}
+
+// 角色归因
+export interface RoleAttribution {
+  role: Role;
+  avg_contribution: number;
+  win_rate_when_present: number;
+  impact_description: string;
+}
+
+// 关键决策
+export interface KeyDecision {
+  round: number;
+  phase: Phase;
+  decision: string;
+  outcome: string;
+  impact: 'positive' | 'negative' | 'neutral';
+  player_id?: string;
+}
+
+// 游戏摘要
+export interface GameSummary {
+  game_id: string;
+  winner: Team;
+  rounds: number;
+  duration_seconds: number;
+  total_deaths: number;
+  first_blood_round: number;
+  mvp_player?: string;
+  mvp_role?: Role;
+  key_moments: string[];
+}
+
+// 角色统计
+export interface RoleStats {
+  role: Role;
+  games: number;
+  wins: number;
+  win_rate: number;
+  avg_contribution: number;
+  avg_survival_rate: number;
+  pick_rate: number;
+}
+
+// 统计概览
+export interface StatsOverview {
+  total_games: number;
+  avg_duration_seconds: number;
+  good_win_rate: number;
+  evil_win_rate: number;
+  avg_rounds: number;
+  role_stats: RoleStats[];
+  recent_games: RecentGameSummary[];
+}
+
+// 最近游戏摘要
+export interface RecentGameSummary {
+  game_id: string;
+  winner: Team;
+  rounds: number;
+  duration_seconds: number;
+  player_count: number;
+  date: string;
+}
+
 // 阶段信息映射
 export const PHASE_INFO: Record<Phase, PhaseConfig> = {
   [Phase.SETUP]: {

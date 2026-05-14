@@ -15,7 +15,8 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/', label: '首页', icon: '🏠' },
-    { path: '/games', label: '游戏列表', icon: '🎮' },
+    { path: '/leaderboard', label: '排行榜', icon: '🏆' },
+    { path: '/stats', label: '数据统计', icon: '📊' },
   ];
 
   return (

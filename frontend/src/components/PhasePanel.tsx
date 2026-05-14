@@ -98,14 +98,6 @@ export function PhasePanel({
     }
   };
 
-  // 处理猎人开枪
-  const handleHunterShoot = () => {
-    if (selectedTarget) {
-      onAction({ type: 'HUNTER_SHOOT', target: selectedTarget });
-      setSelectedTarget(null);
-    }
-  };
-
   // 处理结束发言
   const handleEndSpeech = () => {
     onAction({ type: 'END_SPEECH' });

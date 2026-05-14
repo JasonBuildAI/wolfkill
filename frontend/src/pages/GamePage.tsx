@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useJoinGame } from '@/hooks/useGameAPI';
 import { useGameStore } from '@/store/gameStore';
@@ -12,10 +10,6 @@ import { ChatLog } from '@/components/ChatLog';
 import { RoleReveal } from '@/components/RoleReveal';
 import { GameOver } from '@/components/GameOver';
 import { Phase, type GameAction } from '@/types/game';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 export function GamePage() {
   const { gameId } = useParams<{ gameId: string }>();

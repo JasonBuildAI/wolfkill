@@ -18,7 +18,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
   const { gameId, playerId, onConnect, onDisconnect, onError } = options;
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const { 
     setConnected, 

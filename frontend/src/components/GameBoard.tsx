@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { PlayerCard } from './PlayerCard';
-import { Phase, PHASE_INFO, Team, type Player, type GameState } from '@/types/game';
+import { Phase, PHASE_INFO, Team, type GameState } from '@/types/game';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
