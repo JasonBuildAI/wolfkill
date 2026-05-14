@@ -17,6 +17,7 @@ export function Layout({ children }: LayoutProps) {
     { path: '/', label: '首页', icon: '🏠' },
     { path: '/leaderboard', label: '排行榜', icon: '🏆' },
     { path: '/stats', label: '数据统计', icon: '📊' },
+    { path: '/settings', label: '模型配置', icon: '⚙️' },
   ];
 
   return (

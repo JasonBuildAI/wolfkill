@@ -17,12 +17,12 @@ from pydantic import BaseModel, Field
 from backend.agents.base import BaseAgent
 from backend.agents.guard_agent import GuardAgent
 from backend.agents.hunter_agent import HunterAgent
-from backend.agents.llm_client import get_llm_client
+from backend.agents.llm_client import get_llm_client, update_llm_client
 from backend.agents.seer_agent import SeerAgent
 from backend.agents.villager_agent import VillagerAgent
 from backend.agents.werewolf_agent import WerewolfAgent
 from backend.agents.witch_agent import WitchAgent
-from backend.config import config
+from backend.config import config, Config, ModelConfig, PROVIDER_CONFIGS
 from backend.database import create_game as db_create_game
 from backend.database import (
     get_game,
@@ -862,6 +862,132 @@ async def get_statistics_overview():
         "evil_win_rate": round(evil_wins / total_finished, 4) if total_finished > 0 else 0.0,
         "role_win_rates": role_win_rates,
     }
+
+
+# ========== Model Configuration Endpoints ==========
+
+class ModelConfigRequest(BaseModel):
+    provider: str = "openai"
+    model: str = "gpt-4o-mini"
+    api_key: str = ""
+    base_url: str = ""
+    temperature: float = 0.7
+    max_tokens: int = 500
+
+
+@app.get("/api/providers")
+async def get_providers():
+    """获取所有支持的模型服务商列表"""
+    return {
+        "providers": [
+            {
+                "id": key,
+                "name": value["name"],
+                "models": value["models"],
+                "key_url": value["key_url"],
+            }
+            for key, value in PROVIDER_CONFIGS.items()
+        ]
+    }
+
+
+@app.get("/api/model-config")
+async def get_current_model_config():
+    """获取当前模型配置"""
+    cfg = Config.get_model_config()
+    return {
+        "provider": cfg.provider,
+        "model": cfg.model,
+        "base_url": cfg.base_url,
+        "temperature": cfg.temperature,
+        "max_tokens": cfg.max_tokens,
+        "api_key_set": bool(cfg.api_key),
+    }
+
+
+@app.post("/api/model-config")
+async def set_model_config(request: ModelConfigRequest):
+    """设置模型配置"""
+    # 验证服务商
+    if request.provider not in PROVIDER_CONFIGS:
+        raise HTTPException(status_code=400, detail=f"不支持的服务商: {request.provider}")
+
+    # 如果是内置服务商且未提供base_url，使用默认
+    provider_cfg = PROVIDER_CONFIGS[request.provider]
+    base_url = request.base_url or provider_cfg["base_url"]
+
+    if not base_url and request.provider != "custom":
+        raise HTTPException(status_code=400, detail="该服务商需要配置base_url")
+
+    if not request.api_key:
+        raise HTTPException(status_code=400, detail="API Key 不能为空")
+
+    # 创建新配置
+    model_config = ModelConfig(
+        provider=request.provider,
+        model=request.model,
+        api_key=request.api_key,
+        base_url=base_url,
+        temperature=request.temperature,
+        max_tokens=request.max_tokens,
+    )
+
+    # 更新全局配置
+    Config.set_model_config(model_config)
+
+    # 更新LLM客户端
+    update_llm_client(model_config)
+
+    # 更新游戏管理器中的LLM客户端
+    game_manager.llm_client = get_llm_client()
+
+    logger.info(f"模型配置已更新: provider={request.provider}, model={request.model}")
+
+    return {
+        "message": "模型配置已更新",
+        "provider": request.provider,
+        "model": request.model,
+        "base_url": base_url,
+    }
+
+
+@app.post("/api/model-config/test")
+async def test_model_config(request: ModelConfigRequest):
+    """测试模型配置是否可用"""
+    provider_cfg = PROVIDER_CONFIGS.get(request.provider, {})
+    base_url = request.base_url or provider_cfg.get("base_url", "")
+
+    if not base_url and request.provider != "custom":
+        raise HTTPException(status_code=400, detail="该服务商需要配置base_url")
+
+    if not request.api_key:
+        raise HTTPException(status_code=400, detail="API Key 不能为空")
+
+    try:
+        # 创建临时客户端测试
+        from openai import AsyncOpenAI
+        test_client = AsyncOpenAI(
+            api_key=request.api_key,
+            base_url=base_url,
+            timeout=30.0,
+        )
+
+        # 发送测试请求
+        response = await test_client.chat.completions.create(
+            model=request.model,
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=10,
+        )
+
+        return {
+            "success": True,
+            "message": "连接成功",
+            "model": request.model,
+            "response_preview": response.choices[0].message.content[:50] if response.choices[0].message.content else "",
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"连接测试失败: {str(e)}")
 
 
 # ========== WebSocket ==========

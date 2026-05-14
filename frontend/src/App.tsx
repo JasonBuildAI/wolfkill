@@ -7,6 +7,7 @@ import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { StatsPage } from '@/pages/StatsPage'
 import { ReplayPage } from '@/pages/ReplayPage'
 import { PlayerStatsPage } from '@/pages/PlayerStatsPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
       <Route path="/stats" element={<Layout><StatsPage /></Layout>} />
       <Route path="/replay/:gameId" element={<Layout><ReplayPage /></Layout>} />
       <Route path="/player/:playerId" element={<Layout><PlayerStatsPage /></Layout>} />
+      <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />
     </Routes>
   )
 }
