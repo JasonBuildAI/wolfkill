@@ -956,12 +956,34 @@ async def test_model_config(request: ModelConfigRequest):
     """测试模型配置是否可用"""
     provider_cfg = PROVIDER_CONFIGS.get(request.provider, {})
     base_url = request.base_url or provider_cfg.get("base_url", "")
+    provider_name = provider_cfg.get("name", request.provider)
 
     if not base_url and request.provider != "custom":
         raise HTTPException(status_code=400, detail="该服务商需要配置base_url")
 
     if not request.api_key:
         raise HTTPException(status_code=400, detail="API Key 不能为空")
+
+    # API Key 格式提示
+    key_prefixes = {
+        "openai": ("sk-", "OpenAI"),
+        "azure": ("", "Azure"),
+        "anthropic": ("sk-ant-", "Anthropic"),
+        "deepseek": ("sk-", "DeepSeek"),
+        "openrouter": ("sk-or-", "OpenRouter"),
+        "siliconflow": ("sk-", "硅基流动"),
+        "zhipu": ("", "智谱AI"),
+        "moonshot": ("sk-", "Moonshot"),
+        "dashscope": ("sk-", "阿里云百炼"),
+    }
+    
+    expected_prefix, expected_name = key_prefixes.get(request.provider, ("", provider_name))
+    if expected_prefix and not request.api_key.startswith(expected_prefix):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"API Key 格式不正确。您选择了 {provider_name}，但提供的 Key 不是 {expected_name} 的格式。"
+                   f"请确保您使用的是 {expected_name} 的 API Key，而不是其他服务商的 Key。"
+        )
 
     try:
         # 创建临时客户端测试
@@ -987,7 +1009,23 @@ async def test_model_config(request: ModelConfigRequest):
         }
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"连接测试失败: {str(e)}")
+        error_msg = str(e)
+        if "401" in error_msg or "Incorrect API key" in error_msg:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"API Key 验证失败。请检查：\n"
+                       f"1. 您使用的是 {provider_name} 的 API Key（不是其他服务商的）\n"
+                       f"2. Key 没有过期或被撤销\n"
+                       f"3. 如果您使用第三方转发，请确认转发服务正常"
+            )
+        elif "404" in error_msg or "model" in error_msg.lower():
+            raise HTTPException(
+                status_code=400, 
+                detail=f"模型 '{request.model}' 不存在或无法访问。"
+                       f"请确认 {provider_name} 支持该模型。"
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"连接测试失败: {error_msg}")
 
 
 # ========== WebSocket ==========

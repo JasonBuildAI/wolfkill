@@ -2,6 +2,40 @@ import { useState, useEffect, useCallback } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+// 获取API Key格式提示
+function getKeyPlaceholder(provider: string): string {
+  const placeholders: Record<string, string> = {
+    openai: 'sk-xxxxxxxxxxxxxxxxxxxxxxxx',
+    azure: '输入Azure API Key',
+    anthropic: 'sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx',
+    deepseek: 'sk-xxxxxxxxxxxxxxxxxxxxxxxx (DeepSeek Key)',
+    openrouter: 'sk-or-xxxxxxxxxxxxxxxxxxxxxxxx',
+    siliconflow: 'sk-xxxxxxxxxxxxxxxxxxxxxxxx (硅基流动Key)',
+    zhipu: '输入智谱AI API Key',
+    moonshot: 'sk-xxxxxxxxxxxxxxxxxxxxxxxx (Moonshot Key)',
+    dashscope: 'sk-xxxxxxxxxxxxxxxxxxxxxxxx (阿里云Key)',
+    custom: '输入自定义API Key',
+  };
+  return placeholders[provider] || 'sk-...';
+}
+
+// 获取API Key提示信息
+function getKeyHint(provider: string): string {
+  const hints: Record<string, string> = {
+    openai: 'OpenAI API Key 以 sk- 开头',
+    azure: 'Azure OpenAI 使用不同的认证方式',
+    anthropic: 'Anthropic API Key 以 sk-ant- 开头',
+    deepseek: 'DeepSeek API Key 以 sk- 开头，请确保不是OpenAI的Key',
+    openrouter: 'OpenRouter API Key 以 sk-or- 开头',
+    siliconflow: '硅基流动 API Key 以 sk- 开头',
+    zhipu: '智谱AI API Key 格式与其他不同',
+    moonshot: 'Moonshot API Key 以 sk- 开头',
+    dashscope: '阿里云百炼 API Key 以 sk- 开头',
+    custom: '请输入自定义服务商的API Key',
+  };
+  return hints[provider] || '您的API Key仅保存在服务器内存中';
+}
+
 interface Provider {
   id: string;
   name: string;
@@ -249,11 +283,11 @@ export function SettingsPage() {
                   type="password"
                   value={config.api_key}
                   onChange={(e) => setConfig(prev => ({ ...prev, api_key: e.target.value }))}
-                  placeholder="sk-..."
+                  placeholder={getKeyPlaceholder(config.provider)}
                   className="w-full px-4 py-3 bg-black/30 border border-wolf-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  您的API Key仅保存在服务器内存中，不会持久化存储
+                  {getKeyHint(config.provider)}
                 </p>
               </div>
 
